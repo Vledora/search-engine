@@ -116,7 +116,3 @@ Try these queries to see the differences:
 - **sentence-transformers** + **FAISS** for vector search
 - **SQLite** for document storage
 - **Jinja2** for HTML templating
-
-## Resume positioning
-
-> Built an end-to-end search engine over public web content (Wikipedia, Hacker News) using API-based crawling and text normalization. Implemented and compared TF-IDF, BM25, and semantic vector retrieval, exposing a FastAPI web app for querying and visualizing ranked results across methods.
