@@ -1,0 +1,451 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Search Engine MVP</title>
+  <style>
+    :root {
+      --bg: #0f1117;
+      --surface: #1a1d27;
+      --border: #2a2d3a;
+      --text: #e1e4ed;
+      --text-muted: #8b8fa3;
+      --accent: #6c8cff;
+      --accent-hover: #8aa4ff;
+      --wiki: #4ecca3;
+      --hn: #ff6b35;
+      --score-bar: #6c8cff22;
+      --radius: 12px;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Inter, Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    header {
+      width: 100%;
+      padding: 2.5rem 1rem 1rem;
+      text-align: center;
+    }
+
+    header h1 {
+      font-size: 1.75rem;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+    }
+
+    header p {
+      color: var(--text-muted);
+      margin-top: 0.35rem;
+      font-size: 0.9rem;
+    }
+
+    .search-container {
+      width: 100%;
+      max-width: 740px;
+      padding: 0 1rem;
+      margin-top: 1.5rem;
+    }
+
+    .search-bar {
+      display: flex;
+      gap: 0.5rem;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 0.5rem;
+      transition: border-color 0.15s;
+    }
+
+    .search-bar:focus-within { border-color: var(--accent); }
+
+    .search-bar input[type="text"] {
+      flex: 1;
+      background: transparent;
+      border: none;
+      outline: none;
+      color: var(--text);
+      font-size: 1rem;
+      padding: 0.5rem;
+    }
+
+    .search-bar input[type="text"]::placeholder { color: var(--text-muted); }
+
+    .search-bar button {
+      background: var(--accent);
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      padding: 0.5rem 1.25rem;
+      font-size: 0.9rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.15s;
+      white-space: nowrap;
+    }
+
+    .search-bar button:hover { background: var(--accent-hover); }
+
+    .method-tabs {
+      display: flex;
+      gap: 0.5rem;
+      margin-top: 1rem;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+
+    .method-tabs button {
+      background: var(--surface);
+      color: var(--text-muted);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 0.45rem 1rem;
+      font-size: 0.85rem;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+
+    .method-tabs button.active {
+      background: var(--accent);
+      color: #fff;
+      border-color: var(--accent);
+    }
+
+    .method-tabs button:hover:not(.active) {
+      border-color: var(--accent);
+      color: var(--text);
+    }
+
+    .method-tabs button:disabled {
+      opacity: 0.35;
+      cursor: not-allowed;
+    }
+
+    .meta-line {
+      color: var(--text-muted);
+      font-size: 0.8rem;
+      margin-top: 1rem;
+      text-align: center;
+      min-height: 1.2em;
+    }
+
+    .results {
+      margin-top: 1rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+      padding-bottom: 2rem;
+    }
+
+    .result-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1rem 1.25rem;
+      position: relative;
+      overflow: hidden;
+      transition: border-color 0.15s;
+    }
+
+    .result-card:hover { border-color: var(--accent); }
+
+    .result-card .score-bg {
+      position: absolute;
+      left: 0; top: 0; bottom: 0;
+      background: var(--score-bar);
+      z-index: 0;
+      transition: width 0.3s ease;
+    }
+
+    .result-card > * { position: relative; z-index: 1; }
+
+    .result-header {
+      display: flex;
+      align-items: baseline;
+      gap: 0.5rem;
+    }
+
+    .result-rank {
+      color: var(--text-muted);
+      font-size: 0.75rem;
+      font-weight: 700;
+      min-width: 1.5em;
+    }
+
+    .result-title {
+      font-size: 1.05rem;
+      font-weight: 600;
+    }
+
+    .result-title a {
+      color: var(--accent);
+      text-decoration: none;
+    }
+
+    .result-title a:hover { text-decoration: underline; }
+
+    .result-meta {
+      display: flex;
+      gap: 0.75rem;
+      margin-top: 0.35rem;
+      font-size: 0.78rem;
+      align-items: center;
+      padding-left: 2em;
+    }
+
+    .badge {
+      padding: 0.15rem 0.5rem;
+      border-radius: 4px;
+      font-weight: 600;
+      font-size: 0.7rem;
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+    }
+
+    .badge.wiki { background: #4ecca322; color: var(--wiki); }
+    .badge.hn   { background: #ff6b3522; color: var(--hn); }
+
+    .score-label { color: var(--text-muted); }
+
+    .result-snippet {
+      margin-top: 0.5rem;
+      color: var(--text-muted);
+      font-size: 0.88rem;
+      line-height: 1.55;
+      padding-left: 2em;
+    }
+
+    .empty-state {
+      text-align: center;
+      color: var(--text-muted);
+      margin-top: 3rem;
+      font-size: 0.95rem;
+    }
+
+    .compare-toggle {
+      margin-top: 1rem;
+      text-align: center;
+    }
+
+    .compare-toggle label {
+      color: var(--text-muted);
+      font-size: 0.82rem;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+    }
+
+    .compare-toggle input { accent-color: var(--accent); }
+
+    .compare-grid {
+      display: grid;
+      gap: 1rem;
+      margin-top: 1rem;
+      padding-bottom: 2rem;
+    }
+
+    .compare-col h3 {
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 0.5rem;
+      text-align: center;
+    }
+
+    footer {
+      margin-top: auto;
+      padding: 2rem 1rem;
+      color: var(--text-muted);
+      font-size: 0.75rem;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Search Engine MVP</h1>
+    <p>Compare TF-IDF, BM25 and semantic vector retrieval over Wikipedia + Hacker News</p>
+  </header>
+
+  <div class="search-container">
+    <div class="search-bar">
+      <input type="text" id="query" placeholder="Search for anything ..." autofocus />
+      <button onclick="doSearch()">Search</button>
+    </div>
+
+    <div class="method-tabs" id="methodTabs"></div>
+
+    <div class="compare-toggle">
+      <label><input type="checkbox" id="compareMode" onchange="handleCompareToggle()" /> Compare all methods side-by-side</label>
+    </div>
+
+    <div class="meta-line" id="meta"></div>
+    <div class="results" id="results">
+      <div class="empty-state">Enter a query to see ranked results.</div>
+    </div>
+  </div>
+
+  <footer>Portfolio project &mdash; data sourced from Wikipedia API &amp; Hacker News API</footer>
+
+  <script>
+    let currentMethod = 'bm25';
+    let availableMethods = [];
+
+    const LABELS = { bm25: 'BM25', tfidf: 'TF-IDF', vector: 'Vector' };
+
+    async function init() {
+      try {
+        const resp = await fetch('/api/methods');
+        const data = await resp.json();
+        availableMethods = data.methods;
+      } catch {
+        availableMethods = ['bm25', 'tfidf', 'vector'];
+      }
+      if (!availableMethods.includes(currentMethod)) {
+        currentMethod = availableMethods[0] || 'bm25';
+      }
+      renderTabs();
+    }
+
+    function renderTabs() {
+      const container = document.getElementById('methodTabs');
+      container.innerHTML = '';
+      for (const m of ['bm25', 'tfidf', 'vector']) {
+        const btn = document.createElement('button');
+        btn.textContent = LABELS[m] || m;
+        btn.dataset.method = m;
+        if (m === currentMethod) btn.classList.add('active');
+        if (!availableMethods.includes(m)) {
+          btn.disabled = true;
+          btn.title = 'Index not available — run reindex.py';
+        }
+        btn.addEventListener('click', () => {
+          if (!availableMethods.includes(m)) return;
+          document.querySelectorAll('.method-tabs .active').forEach(b => b.classList.remove('active'));
+          btn.classList.add('active');
+          currentMethod = m;
+          const q = document.getElementById('query').value.trim();
+          if (q && !document.getElementById('compareMode').checked) doSearch();
+        });
+        container.appendChild(btn);
+      }
+    }
+
+    document.getElementById('query').addEventListener('keydown', e => {
+      if (e.key === 'Enter') doSearch();
+    });
+
+    function handleCompareToggle() {
+      const q = document.getElementById('query').value.trim();
+      if (q) doSearch();
+    }
+
+    async function doSearch() {
+      const q = document.getElementById('query').value.trim();
+      if (!q) return;
+
+      const compare = document.getElementById('compareMode').checked;
+      const meta = document.getElementById('meta');
+      const container = document.getElementById('results');
+
+      if (compare) {
+        meta.textContent = 'Searching with all methods ...';
+        container.innerHTML = '';
+
+        const methods = availableMethods;
+        const cols = methods.length;
+        container.classList.add('compare-grid');
+        container.style.gridTemplateColumns = `repeat(${cols}, 1fr)`;
+
+        const t0 = performance.now();
+        const responses = await Promise.all(
+          methods.map(m => fetch(`/api/search?q=${encodeURIComponent(q)}&method=${m}&top_k=10`).then(r => r.json()))
+        );
+        const elapsed = ((performance.now() - t0) / 1000).toFixed(2);
+        meta.textContent = `Compared ${methods.length} methods in ${elapsed}s`;
+
+        responses.forEach((data, i) => {
+          const col = document.createElement('div');
+          col.className = 'compare-col';
+          col.innerHTML = `<h3>${LABELS[methods[i]] || methods[i]}</h3>`;
+          if (!data.results.length) {
+            col.innerHTML += '<div class="empty-state" style="margin-top:1rem;font-size:.82rem">No results</div>';
+          } else {
+            const maxS = Math.max(...data.results.map(r => r.score));
+            data.results.forEach((r, j) => {
+              col.innerHTML += resultCardHTML(r, j, maxS);
+            });
+          }
+          container.appendChild(col);
+        });
+      } else {
+        container.classList.remove('compare-grid');
+        container.style.gridTemplateColumns = '';
+        meta.textContent = 'Searching ...';
+        container.innerHTML = '';
+
+        const t0 = performance.now();
+        const resp = await fetch(`/api/search?q=${encodeURIComponent(q)}&method=${currentMethod}&top_k=15`);
+        const data = await resp.json();
+        const elapsed = ((performance.now() - t0) / 1000).toFixed(2);
+
+        meta.textContent = `${data.count} results via ${(LABELS[data.method] || data.method)} in ${elapsed}s`;
+
+        if (!data.results.length) {
+          container.innerHTML = '<div class="empty-state">No results found.</div>';
+          return;
+        }
+
+        const maxScore = Math.max(...data.results.map(r => r.score));
+        data.results.forEach((r, i) => {
+          container.innerHTML += resultCardHTML(r, i, maxScore);
+        });
+      }
+    }
+
+    function resultCardHTML(r, i, maxScore) {
+      const pct = maxScore > 0 ? (r.score / maxScore * 100) : 0;
+      const badgeClass = r.source === 'wikipedia' ? 'wiki' : 'hn';
+      const badgeLabel = r.source === 'wikipedia' ? 'Wiki' : 'HN';
+      return `
+        <div class="result-card">
+          <div class="score-bg" style="width:${pct}%"></div>
+          <div class="result-header">
+            <span class="result-rank">${i + 1}</span>
+            <span class="result-title">
+              <a href="${escAttr(r.url)}" target="_blank" rel="noopener">${escHtml(r.title)}</a>
+            </span>
+          </div>
+          <div class="result-meta">
+            <span class="badge ${badgeClass}">${badgeLabel}</span>
+            <span class="score-label">score ${r.score}</span>
+          </div>
+          <div class="result-snippet">${escHtml(r.snippet)}</div>
+        </div>`;
+    }
+
+    function escHtml(s) {
+      const d = document.createElement('div');
+      d.textContent = s;
+      return d.innerHTML;
+    }
+    function escAttr(s) {
+      return s.replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    }
+
+    init();
+  </script>
+</body>
+</html>
